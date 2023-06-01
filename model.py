@@ -164,7 +164,6 @@ def recognize_letter(img_array, model):
     predicts_arr = letters_model(img_array)
     letter_index = np.argmax(predicts_arr)
     accuracy = round(np.max(predicts_arr), 5)
-    print(accuracy)
     letter = letters[letter_index-1]
 
     return letter, accuracy
