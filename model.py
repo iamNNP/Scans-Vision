@@ -121,6 +121,7 @@ import cv2
 # model.save('letters_model.h5')
 
 
+
 # train_images, train_labels = extract_training_samples('digits')
 # test_images, test_labels = extract_test_samples('digits')
 
