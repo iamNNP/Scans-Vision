@@ -151,32 +151,89 @@ import cv2
 # print(f'Test accuracy: {test_acc:.3f}')
 
 
-def img_preprocessing(img):
-    img_array = np.expand_dims(img, axis=0)
-    img_array = img_array.astype('float32') / 255
+class NNModel:
+    __model_types = {'digits': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], 
+                   'letters': ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z']}
 
-    return img_array
-
-
-def recognize_letter(img_array, model):
-    letters_model = load_model(model)
-    letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z']
-
-    predicts_arr = letters_model(img_array)
-    letter_index = np.argmax(predicts_arr)
-    accuracy = round(np.max(predicts_arr), 5)
-    letter = letters[letter_index-1]
-
-    return letter, accuracy
+    def __init__(self, model_type, model_file_path):
+        self.__validate_model_type(model_type)
+        self.__validate_model_file(model_file_path)
+        self.__model_type = model_type
+        self.__symbols = self.__model_types[model_type]
+        self.__model_file_path = model_file_path
 
 
-def recognize_digit(img_array, model):
-    digits_model = load_model(model)
-    digits = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    @classmethod
+    def __validate_model_type(cls, model_type):
+        if model_type not in cls.__model_types:
+            raise AttributeError('Incorrect model type. Only "digits" and "letters" model types are available')
+        
+    
+    @staticmethod
+    def __validate_model_file(model_file_path):
+        if not(isinstance(model_file_path, str) and model_file_path.endswith('.h5')):
+            raise AttributeError('Incorrect model file path. File path string must end with .h5 extension')
 
-    predicts_arr = digits_model(img_array)
-    digit_index = np.argmax(predicts_arr)
-    accuracy = round(np.max(predicts_arr), 5)
-    digit = digits[digit_index]
 
-    return digit, accuracy
+    @staticmethod
+    def img_preprocessing(img):
+        img_array = np.expand_dims(img, axis=0)
+        img_array = img_array.astype('float32') / 255
+
+        return img_array
+
+
+    def recognize(self, img_array):
+        model = load_model(self.__model_file_path)
+        predicts_arr = model(img_array)
+        symbol_index = np.argmax(predicts_arr)
+        accuracy = round(np.max(predicts_arr), 5)
+        
+        if self.__model_type == 'digits':
+            symbol = self.__symbols[symbol_index]
+        else:
+            symbol = self.__symbols[symbol_index-1]
+
+        return symbol, accuracy
+
+
+    # @property
+    # def model_type(self):
+    #     return self.__model_type
+
+    # @model_type.setter
+    # def model_type(self, model_type):
+    #     self.__model_type = model_type
+    
+    # @property
+    # def model_file_path(self):
+    #     return self.__model_file_path
+
+    # @model_file_path.setter
+    # def model_file_path(self, model_file_path):
+    #     self.__model_file_path = model_file_path
+
+    
+
+    # def recognize_letter(img_array, model):
+    #     letters_model = load_model(model)
+    #     letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z']
+
+    #     predicts_arr = letters_model(img_array)
+    #     letter_index = np.argmax(predicts_arr)
+    #     accuracy = round(np.max(predicts_arr), 5)
+    #     letter = letters[letter_index-1]
+
+    #     return letter, accuracy
+
+
+    # def recognize_digit(img_array, model):
+    #     digits_model = load_model(model)
+    #     digits = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+
+    #     predicts_arr = digits_model(img_array)
+    #     digit_index = np.argmax(predicts_arr)
+    #     accuracy = round(np.max(predicts_arr), 5)
+    #     digit = digits[digit_index]
+
+    #     return digit, accuracy
