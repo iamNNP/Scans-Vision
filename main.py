@@ -30,25 +30,29 @@ EROSION_KERNEL = (5, 5)
 
 class CVMethods:
     def __init__(self, image_path):
-        self.__image_path = image_path
-        self.__image = cv2.imread(image_path)
+        self.image_path = image_path
+        self.image = cv2.imread(image_path)
 
 
     @property
     def image(self):
-        return self.__image
+        return self._image
     
     @image.setter
     def image(self, image):
-        self.__image = image
+        if not(isinstance(image, np.ndarray)):
+            raise ValueError('Image is not numpy.ndarray.')
+        self._image = image
 
     @property
     def image_path(self):
-        return self.__image_path
+        return self._image_path
     
     @image_path.setter
     def image_path(self, image_path):
-        self.__image_path = image_path
+        if not(isinstance(image_path, str)):
+            raise ValueError('Image path type can only be str.')
+        self._image_path = image_path
 
 
     def area_part_on_image(self, image, contour):
@@ -64,7 +68,7 @@ class CVMethods:
 
         for idx, contour in enumerate(contours):
             (x, y, w, h) = cv2.boundingRect(contour) 
-            if hierarchy[0][idx][3] == 0 and area_part_on_image(image, contour) > min_area: #const (arg)
+            if hierarchy[0][idx][3] == 0 and self.area_part_on_image(image, contour) > min_area: #const (arg)
                 cv2.rectangle(image, (x, y), (x + w, y + h), cnts_color, brd_w) # const (arg)
                 cnt_rects.append((x, y, w, h))
         # cv2.imshow('contours', image)
@@ -104,7 +108,7 @@ class CVMethods:
                 cnts_rects_norm.append(step_cnt_rect)
 
         if len(symb_cnts) == 2:
-            sorted_cnts = sort_cnts(symb_cnts, param=2, reverse=True)
+            sorted_cnts = CVMethods.sort_cnts(symb_cnts, param=2, reverse=True)
             total_width = 0
 
             for width in [cnt[2] for cnt in sorted_cnts]:
@@ -112,7 +116,7 @@ class CVMethods:
 
             width1, width2 = sorted_cnts[0][2], sorted_cnts[1][2]
             (width_step1, width_step2), \
-            (add_range1, add_range2) = add_cnts(total_width, width1, width2)
+            (add_range1, add_range2) = CVMethods.add_cnts(total_width, width1, width2)
             
             x1, y1, w1, h1 = sorted_cnts[0]
             for cnt_add_i1 in range(add_range1):
@@ -128,7 +132,7 @@ class CVMethods:
                 cnts_rects_norm.append(sorted_cnts[1])
 
         if len(symb_cnts) == 3:
-            sorted_cnts = sort_cnts(symb_cnts, param=2, reverse=True)
+            sorted_cnts = CVMethods.sort_cnts(symb_cnts, param=2, reverse=True)
             total_width = 0
 
             for width in [cnt[2] for cnt in sorted_cnts]:
@@ -137,7 +141,7 @@ class CVMethods:
             width1, width2, width3 = sorted_cnts[0][2], sorted_cnts[1][2], sorted_cnts[2][2]
             
             (width_step1, width_step2, width_step3), \
-            (add_range1, add_range2, add_range3) = add_cnts(total_width, width1, width2, width3)
+            (add_range1, add_range2, add_range3) = CVMethods.add_cnts(total_width, width1, width2, width3)
 
             x1, y1, w1, h1 = sorted_cnts[0]
             for cnt_add_i1 in range(add_range1):
@@ -161,7 +165,7 @@ class CVMethods:
                 cnts_rects_norm.append(sorted_cnts[2])
 
         if len(symb_cnts) == 4:
-            sorted_cnts = sort_cnts(symb_cnts, param=2, reverse=True)
+            sorted_cnts = CVMethods.sort_cnts(symb_cnts, param=2, reverse=True)
             x, y, w, h = sorted_cnts[0]
 
             cnt_rect1 = x, y, w // 2, h
@@ -173,7 +177,7 @@ class CVMethods:
         if len(symb_cnts) >= 5:
             cnts_rects_norm = symb_cnts
 
-        return sort_cnts(cnts_rects_norm, param=0, reverse=False)
+        return CVMethods.sort_cnts(cnts_rects_norm, param=0, reverse=False)
 
 
     def show_cnts_rects(self, image_name, image, cnts_rects, cnts_color, brd_w):
@@ -214,7 +218,7 @@ class CVMethods:
 
 
     def student_num_rect(self, w_crop=WIDTH_CROP, h_crop=HEIGHT_CROP):
-        scan = self.__image
+        scan = self.image
         width = scan.shape[0]
         height = scan.shape[1]
 
@@ -266,173 +270,7 @@ class CVMethods:
         return erosion, thresh
 
 
-# Returns rectangle contour area on an image
-# Находит площадь прямоугольного контура на изображении
-def area_part_on_image(image, contour):
-    image_area = image.shape[0] * image.shape[1]
-    cnt_area = cv2.contourArea(contour)
-    
-    area_part = (cnt_area / image_area) * 100
-    return area_part
 
-# Denotes found contours on an image and returns a list with contours coords
-# Размечат найденные контура на изображении и возвращает список найденных координат контуров
-def cnts_mark_out(image, contours, hierarchy, cnts_color, brd_w, min_area=MIN_ALLOWED_AREA):
-    cnt_rects = []
-
-    for idx, contour in enumerate(contours):
-        (x, y, w, h) = cv2.boundingRect(contour) 
-        if hierarchy[0][idx][3] == 0 and area_part_on_image(image, contour) > min_area: #const (arg)
-            cv2.rectangle(image, (x, y), (x + w, y + h), cnts_color, brd_w) # const (arg)
-            cnt_rects.append((x, y, w, h))
-    # cv2.imshow('contours', image)
-    # cv2.waitKey(0)
-    return cnt_rects
-
-# Sorts found rectangle contours by width or other
-# Сортирует найденные прямоугольные контура по ширине или другому param
-def sort_cnts(cnts_rects, param, reverse):
-    sorted_cnts = sorted(cnts_rects, key=lambda rect: rect[param], reverse=reverse)
-    return sorted_cnts
-
-# Counts amount of symbols contours and width step for norm_found_cnts function
-# Подсчёт количества контуров и шага ширины для функции norm_found_cnts
-def add_cnts(total_width, *args):
-    width_steps = []
-    cnts_in = []
-
-    for width in args:
-        width_step = width // round(5 * (width / total_width))
-        width_steps.append(width_step)
-        cnt_in = round(width / width_step)
-        cnts_in.append(cnt_in)
-    
-    return width_steps, cnts_in
-
-# Norms found contours to get rid of together written symbols
-# Нормирует найденные контура (разделяет на части, чтобы избавиться от слитно написанных букв)
-def norm_found_cnts(symb_cnts):
-    cnts_rects_norm = []
-    
-    if len(symb_cnts) == 1:
-        x, y, w, h = symb_cnts[0]
-        width_step = w // 5
-        for cnt_add_i in range(5):
-            step_cnt_rect = x + width_step * cnt_add_i, y, width_step, h
-            cnts_rects_norm.append(step_cnt_rect)
-
-    if len(symb_cnts) == 2:
-        sorted_cnts = sort_cnts(symb_cnts, param=2, reverse=True)
-        total_width = 0
-
-        for width in [cnt[2] for cnt in sorted_cnts]:
-            total_width += width
-
-        width1, width2 = sorted_cnts[0][2], sorted_cnts[1][2]
-        (width_step1, width_step2), \
-        (add_range1, add_range2) = add_cnts(total_width, width1, width2)
-        
-        x1, y1, w1, h1 = sorted_cnts[0]
-        for cnt_add_i1 in range(add_range1):
-            step_cnt_rect1 = x1 + width_step1 * cnt_add_i1, y1, width_step1, h1
-            cnts_rects_norm.append(step_cnt_rect1)
-
-        if add_range2 != 1:
-            x2, y2, w2, h2 = sorted_cnts[1]
-            for cnt_add_i2 in range(add_range2):
-                step_cnt_rect2 = x2 + width_step2 * cnt_add_i2, y2, width_step2, h2
-                cnts_rects_norm.append(step_cnt_rect2)
-        else:
-            cnts_rects_norm.append(sorted_cnts[1])
-
-    if len(symb_cnts) == 3:
-        sorted_cnts = sort_cnts(symb_cnts, param=2, reverse=True)
-        total_width = 0
-
-        for width in [cnt[2] for cnt in sorted_cnts]:
-            total_width += width
-
-        width1, width2, width3 = sorted_cnts[0][2], sorted_cnts[1][2], sorted_cnts[2][2]
-        
-        (width_step1, width_step2, width_step3), \
-        (add_range1, add_range2, add_range3) = add_cnts(total_width, width1, width2, width3)
-
-        x1, y1, w1, h1 = sorted_cnts[0]
-        for cnt_add_i1 in range(add_range1):
-            step_cnt_rect1 = x1 + width_step1 * cnt_add_i1, y1, width_step1, h1
-            cnts_rects_norm.append(step_cnt_rect1)
-
-        if add_range2 != 1:
-            x2, y2, w2, h2 = sorted_cnts[1]
-            for cnt_add_i2 in range(add_range2):
-                step_cnt_rect2 = x2 + width_step2 * cnt_add_i2, y2, width_step2, h2
-                cnts_rects_norm.append(step_cnt_rect2)
-        else:
-            cnts_rects_norm.append(sorted_cnts[1])
-
-        if add_range3 != 1:
-            x3, y3, w3, h3 = sorted_cnts[2]
-            for cnt_add_i3 in range(add_range3):
-                step_cnt_rect3 = x3 + width_step3 * cnt_add_i3, y3, width_step3, h3
-                cnts_rects_norm.append(step_cnt_rect3)
-        else:
-            cnts_rects_norm.append(sorted_cnts[2])
-
-    if len(symb_cnts) == 4:
-        sorted_cnts = sort_cnts(symb_cnts, param=2, reverse=True)
-        x, y, w, h = sorted_cnts[0]
-
-        cnt_rect1 = x, y, w // 2, h
-        cnt_rect2 = x+(w // 2), y, w // 2, h
-
-        cnts_lst = [cnt_rect1, cnt_rect2]
-        cnts_rects_norm = [*cnts_lst, *sorted_cnts[1::]]
-
-    if len(symb_cnts) >= 5:
-        cnts_rects_norm = symb_cnts
-
-    return sort_cnts(cnts_rects_norm, param=0, reverse=False)
-
-# Shows an image with denoted contours
-# Показывает картинку с выделенными контурами
-def show_cnts_rects(image_name, image, cnts_rects, cnts_color, brd_w):
-    for (x, y, w, h) in cnts_rects:
-        cv2.rectangle(image, (x, y), (x + w, y + h), cnts_color, brd_w)
-    cv2.imshow(image_name, image)
-    cv2.waitKey(0)
-
-# Shows an image part 
-# Показвает какой-то прямоугольный кусок изображения
-def show_img_part(image, x, y, w, h):
-    img_part = image[y: y+h, x: x+w]
-    cv2.imshow('img_part', img_part)
-    cv2.waitKey(0)
-
-# Resizes an image into 28x28 resolution to work with NN and justifies symbol if RES_SHIFT
-# Изменяет разрешение изображения на 28x28, чтобы работать с нейронной сетью и выравнивает букву в квадрате если указать RES_SHIFT
-def resize_img(image, cnt_rect, out_size=RES_SIZE, symbol_shift=RES_SHIFT):
-    x, y, w, h = cnt_rect
-    x, y = x - symbol_shift, y - symbol_shift
-    w, h = w + (2 * symbol_shift), h + (2 * symbol_shift)
-    symbol_crop = image[y: y+h, x: x+w]
-
-    max_size = max(w, h)
-
-    symbol_square = 0 * np.ones([max_size, max_size], np.uint8)
-    if w > h:
-        y_pos = max_size//2 - h//2
-        symbol_square[y_pos:y_pos + h, 0:w] = symbol_crop
-    elif w < h:
-        x_pos = max_size//2 - w//2
-        symbol_square[0:h, x_pos:x_pos + w] = symbol_crop
-    else:
-        symbol_square = symbol_crop
-    # plt.imshow(letter_square, cmap=plt.cm.binary)
-    # plt.show()
-    resized = cv2.resize(symbol_square, out_size, cv2.INTER_AREA)
-
-    return resized
-        
 # Finds all scans in folder with file format .jpg
 # Находит все сканы из папки с форматом .jpg
 def scans_from_folder(folder_path):
@@ -450,65 +288,6 @@ def scans_from_folder(folder_path):
     
     return scans
 
-# Crops only student's number from an image
-# Оставляет только верхнюю правую часть с номером поступающего
-def student_num_rect(scan, w_crop=WIDTH_CROP, h_crop=HEIGHT_CROP):
-    width = scan.shape[0]
-    height = scan.shape[1]
-
-    s_num_w = int(width / 100) * w_crop #constant (arg)
-    s_num_h = int(height / 100) * h_crop #constant (arg)
-    student_num_img = scan[0: s_num_h, width - s_num_w: width]
-
-    return student_num_img
-
-
-# Removes all noise from image with blur
-# Избавляет от шума на изображении (плохо пропечатанные клетки) с помощью блюра
-def filter_img(img, f_ker=FILTER_KERNEL):
-    filtered_img = cv2.medianBlur(img, f_ker) #constant (arg)
-    return filtered_img
-
-
-# Finds all pixels in gray range
-# Находит пиксели в заданных "серых" пределах (по дефолту для оставления только букв)
-def img_gray_mask(img, gray_range=(0, 220)):
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
-    lower, upper = gray_range
-    gray_mask = cv2.inRange(gray, lower, upper)
-    # plt.imshow(bright, cmap='gray')
-    # plt.show()
-
-    return gray_mask
-
-# Collects total mask using HSV values
-# Сбор маски со всеми значениями
-def img_mask(img, limits):
-    hsv_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-    total_mask = 0
-
-    for limit in limits:
-        lower = np.array(limit[0])
-        upper = np.array(limit[1])
-
-        mask = cv2.inRange(hsv_img, lower, upper)
-        total_mask += mask
-
-    return total_mask
-
-
-# Returns binary eroded image
-# Возвращает бинарную картинку
-def erode_thresh_img(mask, er_ker=EROSION_KERNEL):
-    kernel = np.ones(er_ker, np.uint8)
-
-    erosion = cv2.erode(mask, kernel, iterations=1) #const arg
-    ret, thresh = cv2.threshold(erosion, 0, 255, cv2.THRESH_BINARY_INV)
-    # plt.imshow(thresh, cmap=plt.cm.binary)
-    # plt.show()
-
-    return erosion, thresh
 
 # Saving source image with symbols info
 # Сохранения изображения с информацией о распознанных символах
@@ -537,100 +316,75 @@ def save_img_data(img, img_path, dir_name, symbs_data, scans_dir='scans'):
     os.chdir('../../..')
 
 
-# Recongnizing an image (main function)
-# Распознавание номера поступающего и сохранение изображений в файл (основная функция)
-# def recognize_scan(scan_path, mask_range, gray_range=(0, 220)):
-#     scans_dir = scan_path.split('/')[-2]
-
-#     scan = cv2.imread(scan_path)
-#     student_num_img = student_num_rect(scan)
-#     filtered_img = filter_img(student_num_img)
-    
-#     if mask_range:
-#         mask = img_mask(filtered_img, limits=mask_range)
-#     else:
-#         mask = img_gray_mask(filtered_img, gray_range=gray_range)
-
-#     erosion, thresh = erode_thresh_img(mask=mask)
-#     contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
-#     cnts_rects = cnts_mark_out(student_num_img, contours, hierarchy, cnts_color=BLACK, brd_w=BORDER_WIDTH)
-
-#     if not(cnts_rects):
-#         dir_name = scan_path.split('/')[-1].split('.')[-2]
-#         save_img_data(scan, scan_path, dir_name, None, scans_dir=scans_dir)
-#         return 'No contours found'
-    
-#     print(f'\nScanning {scan_path}')
-#     print('Found contours (rectangles coords)\n', cnts_rects)
-#     cnts_rects_norm = norm_found_cnts(cnts_rects)
-#     print('Normalized rectangle contours\n', cnts_rects_norm)
-
-#     # Predicting first symbol, which is always a letter
-#     # Распознавание первого символа, который всегда является буквой
-#     symbs_data = []
-#     letter_img = resize_img(erosion, cnts_rects_norm[0])
-#     symbs_data.append(letter_img)
-#     prep_img_arr = NNModel.img_preprocessing(letter_img)
-    
-#     LettersModel = NNModel('letters', 'models/letters_model.h5')
-#     letter, acc = LettersModel.recognize(prep_img_arr)
-#     print(f'Predicted letter: ==> {letter}, Accuracy:', acc)
-#     result = letter
-
-#     DigitsModel = NNModel('digits', 'models/digits_model.h5')
-#     for cnt_rect_i in range(1, len(cnts_rects_norm)):
-#         digit_img = resize_img(erosion, cnts_rects_norm[cnt_rect_i])
-#         symbs_data.append(digit_img)
-#         prep_img_arr = NNModel.img_preprocessing(digit_img)
-
-#         digit, acc = DigitsModel.recognize(prep_img_arr)
-#         print(f'Predicted digit: ==> {digit}, Accuracy:', acc)
-#         result += str(digit)
-
-#     save_img_data(scan, scan_path, result, symbs_data, scans_dir=scans_dir)
-
-#     return result    
-
-
 
 class SymbolsRecognizer:
     def __init__(self, scan_path, mask_range, gray_range=(0, 220)):
-        self.__scan_path = scan_path
-        self.__mask_range = mask_range
-        self.__gray_range = gray_range
+        self.scan_path = scan_path
+        self.mask_range = mask_range
+        self.gray_range = gray_range
 
+
+    @property
+    def scan_path(self):
+        return self._scan_path
     
+    @scan_path.setter
+    def scan_path(self, scan_path):
+        if not(isinstance(scan_path, str)):
+            raise ValueError('Scan path can only be str.')
+        self._scan_path = scan_path
+
+    @property
+    def mask_range(self):
+        return self._mask_range
+    
+    @mask_range.setter
+    def mask_range(self, mask_range):
+        if not(isinstance(mask_range, list)):
+            raise ValueError('Mask range can only be list[tuple[np.array, np.array]].')
+        self._mask_range = mask_range
+
+    @property
+    def gray_range(self):
+        return self._gray_range
+    
+    @gray_range.setter
+    def gray_range(self, gray_range):
+        if not(isinstance(gray_range, tuple)):
+            raise ValueError('Gray range type can only be tuple[int, int].')
+        self._gray_range = gray_range
+
+
     def recognize_scan(self):
-        scan_path = self.__scan_path
-        scans_dir = scan_path.split('/')[-2]
+        scans_dir = self.scan_path.split('/')[-2]
 
-        CVRecognizing = CVMethods(scan_path)
-        student_num_img = CVRecognizing.student_num_rect()
-        filtered_img = CVRecognizing.filter_img(student_num_img)
+        CVPreproccessor = CVMethods(self.scan_path)
+        student_num_img = CVPreproccessor.student_num_rect()
+        filtered_img = CVPreproccessor.filter_img(student_num_img)
         
-        if self.__mask_range:
-            mask = CVRecognizing.img_mask(filtered_img, limits=self.__mask_range)
+        if self.mask_range:
+            mask = CVPreproccessor.img_mask(filtered_img, limits=self.mask_range)
         else:
-            mask = CVRecognizing.img_gray_mask(filtered_img, gray_range=self.__gray_range)
+            mask = CVPreproccessor.img_gray_mask(filtered_img, gray_range=self.gray_range)
 
-        erosion, thresh = CVRecognizing.erode_thresh_img(mask=mask)
+        erosion, thresh = CVPreproccessor.erode_thresh_img(mask=mask)
         contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
-        cnts_rects = CVRecognizing.cnts_mark_out(student_num_img, contours, hierarchy, cnts_color=BLACK, brd_w=BORDER_WIDTH)
+        cnts_rects = CVPreproccessor.cnts_mark_out(student_num_img, contours, hierarchy, cnts_color=BLACK, brd_w=BORDER_WIDTH)
 
         if not(cnts_rects):
-            dir_name = scan_path.split('/')[-1].split('.')[-2]
-            save_img_data(CVRecognizing.image, scan_path, dir_name, None, scans_dir=scans_dir)
+            dir_name = self.scan_path.split('/')[-1].split('.')[-2]
+            save_img_data(CVPreproccessor.image, self.scan_path, dir_name, None, scans_dir=scans_dir)
             return 'No contours found'
         
-        print(f'\nScanning {scan_path}')
+        print(f'\nScanning {self.scan_path}')
         print('Found contours (rectangles coords)\n', cnts_rects)
-        cnts_rects_norm = CVRecognizing.norm_found_cnts(cnts_rects)
+        cnts_rects_norm = CVPreproccessor.norm_found_cnts(cnts_rects)
         print('Normalized rectangle contours\n', cnts_rects_norm)
 
         # Predicting first symbol, which is always a letter
         # Распознавание первого символа, который всегда является буквой
         symbs_data = []
-        letter_img = CVRecognizing.resize_img(erosion, cnts_rects_norm[0])
+        letter_img = CVPreproccessor.resize_img(erosion, cnts_rects_norm[0])
         symbs_data.append(letter_img)
         prep_img_arr = NNModel.img_preprocessing(letter_img)
         
@@ -641,7 +395,7 @@ class SymbolsRecognizer:
 
         DigitsModel = NNModel('digits', 'models/digits_model.h5')
         for cnt_rect_i in range(1, len(cnts_rects_norm)):
-            digit_img = resize_img(erosion, cnts_rects_norm[cnt_rect_i])
+            digit_img = CVPreproccessor.resize_img(erosion, cnts_rects_norm[cnt_rect_i])
             symbs_data.append(digit_img)
             prep_img_arr = NNModel.img_preprocessing(digit_img)
 
@@ -649,12 +403,9 @@ class SymbolsRecognizer:
             print(f'Predicted digit: ==> {digit}, Accuracy:', acc)
             result += str(digit)
 
-        save_img_data(CVRecognizing.image, scan_path, result, symbs_data, scans_dir=scans_dir)
+        save_img_data(CVPreproccessor.image, self.scan_path, result, symbs_data, scans_dir=scans_dir)
 
         return result    
-
-
-
 
 
 
@@ -680,8 +431,8 @@ def denote_dirs_config(folder, config_file):
             if len(samples) > 0:
                 test_sample = f'{folder}/{file_name}/{samples[0]}'
             
-                img = cv2.imread(test_sample)
-                sample_rect = student_num_rect(img)
+                CVPreproccessor = CVMethods(test_sample)
+                sample_rect = CVPreproccessor.student_num_rect()
                 
                 hsv_values = run_mask_bar(sample_rect)
                 cv2.destroyAllWindows()
@@ -757,8 +508,8 @@ def norm_edited_results(folder):
 
 # Recongnition with config file example
 # Пример распознавания с конфиг файлом, но можно и без него, указав limits самостоятельно
-file_path = 'scans_26_08_13_30/200/200001.jpg'
-folder_path = '/'.join(file_path.split('/')[:2])
+# file_path = 'scans_26_08_13_30/200/200001.jpg'
+# folder_path = '/'.join(file_path.split('/')[:2])
 # image = cv2.imread(file_path)
 # rect = student_num_rect(image)
 # limits = run_mask_bar(rect)
@@ -767,5 +518,5 @@ folder_path = '/'.join(file_path.split('/')[:2])
 #     values = ', '.join([str(i) for i in limits])
 #     test_file.write(f'{folder_path}: {values}')
 
-recognition_with_config('config_f.txt')
-norm_edited_results(folder_path.split('/')[-1])
+# recognition_with_config('config_f.txt')
+# norm_edited_results(folder_path.split('/')[-1])
