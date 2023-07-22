@@ -33,7 +33,6 @@ class CVMethods:
         self.image_path = image_path
         self.image = cv2.imread(image_path)
 
-
     @property
     def image(self):
         return self._image
@@ -53,6 +52,34 @@ class CVMethods:
         if not(isinstance(image_path, str)):
             raise ValueError('Image path type can only be str.')
         self._image_path = image_path
+
+
+    @staticmethod
+    def sort_cnts(cnts_rects, param, reverse):
+        sorted_cnts = sorted(cnts_rects, key=lambda rect: rect[param], reverse=reverse)
+        return sorted_cnts
+
+
+    @staticmethod
+    def norm_found_cnts(symb_cnts):
+        cnts_rects_norm = []
+        total_width = sum([cnt[2] for cnt in symb_cnts])
+        if len(symb_cnts) >= 5:
+            return CVMethods.sort_cnts(symb_cnts, param=0, reverse=False)
+
+        for contour in symb_cnts:
+            x_pos = contour[0]
+            width = contour[2]
+            width_part = width / total_width
+            division_parts = round(width_part * 5) if width_part >= (1 / 5) else 1
+            width_step = width // division_parts
+
+            for step in range(division_parts):
+                x_pos += width_step * step
+                symb_cnt = x_pos, contour[1], width_step, contour[3]
+                cnts_rects_norm.append(symb_cnt)
+
+        return CVMethods.sort_cnts(cnts_rects_norm, param=0, reverse=False)
 
 
     def area_part_on_image(self, image, contour):
@@ -76,110 +103,6 @@ class CVMethods:
         return cnt_rects
     
 
-    @staticmethod
-    def sort_cnts(cnts_rects, param, reverse):
-        sorted_cnts = sorted(cnts_rects, key=lambda rect: rect[param], reverse=reverse)
-        return sorted_cnts
-
-
-    @staticmethod
-    def add_cnts(total_width, *args):
-        width_steps = []
-        cnts_in = []
-
-        for width in args:
-            width_step = width // round(5 * (width / total_width))
-            width_steps.append(width_step)
-            cnt_in = round(width / width_step)
-            cnts_in.append(cnt_in)
-        
-        return width_steps, cnts_in
-    
-
-    @staticmethod
-    def norm_found_cnts(symb_cnts):
-        cnts_rects_norm = []
-        
-        if len(symb_cnts) == 1:
-            x, y, w, h = symb_cnts[0]
-            width_step = w // 5
-            for cnt_add_i in range(5):
-                step_cnt_rect = x + width_step * cnt_add_i, y, width_step, h
-                cnts_rects_norm.append(step_cnt_rect)
-
-        if len(symb_cnts) == 2:
-            sorted_cnts = CVMethods.sort_cnts(symb_cnts, param=2, reverse=True)
-            total_width = 0
-
-            for width in [cnt[2] for cnt in sorted_cnts]:
-                total_width += width
-
-            width1, width2 = sorted_cnts[0][2], sorted_cnts[1][2]
-            (width_step1, width_step2), \
-            (add_range1, add_range2) = CVMethods.add_cnts(total_width, width1, width2)
-            
-            x1, y1, w1, h1 = sorted_cnts[0]
-            for cnt_add_i1 in range(add_range1):
-                step_cnt_rect1 = x1 + width_step1 * cnt_add_i1, y1, width_step1, h1
-                cnts_rects_norm.append(step_cnt_rect1)
-
-            if add_range2 != 1:
-                x2, y2, w2, h2 = sorted_cnts[1]
-                for cnt_add_i2 in range(add_range2):
-                    step_cnt_rect2 = x2 + width_step2 * cnt_add_i2, y2, width_step2, h2
-                    cnts_rects_norm.append(step_cnt_rect2)
-            else:
-                cnts_rects_norm.append(sorted_cnts[1])
-
-        if len(symb_cnts) == 3:
-            sorted_cnts = CVMethods.sort_cnts(symb_cnts, param=2, reverse=True)
-            total_width = 0
-
-            for width in [cnt[2] for cnt in sorted_cnts]:
-                total_width += width
-
-            width1, width2, width3 = sorted_cnts[0][2], sorted_cnts[1][2], sorted_cnts[2][2]
-            
-            (width_step1, width_step2, width_step3), \
-            (add_range1, add_range2, add_range3) = CVMethods.add_cnts(total_width, width1, width2, width3)
-
-            x1, y1, w1, h1 = sorted_cnts[0]
-            for cnt_add_i1 in range(add_range1):
-                step_cnt_rect1 = x1 + width_step1 * cnt_add_i1, y1, width_step1, h1
-                cnts_rects_norm.append(step_cnt_rect1)
-
-            if add_range2 != 1:
-                x2, y2, w2, h2 = sorted_cnts[1]
-                for cnt_add_i2 in range(add_range2):
-                    step_cnt_rect2 = x2 + width_step2 * cnt_add_i2, y2, width_step2, h2
-                    cnts_rects_norm.append(step_cnt_rect2)
-            else:
-                cnts_rects_norm.append(sorted_cnts[1])
-
-            if add_range3 != 1:
-                x3, y3, w3, h3 = sorted_cnts[2]
-                for cnt_add_i3 in range(add_range3):
-                    step_cnt_rect3 = x3 + width_step3 * cnt_add_i3, y3, width_step3, h3
-                    cnts_rects_norm.append(step_cnt_rect3)
-            else:
-                cnts_rects_norm.append(sorted_cnts[2])
-
-        if len(symb_cnts) == 4:
-            sorted_cnts = CVMethods.sort_cnts(symb_cnts, param=2, reverse=True)
-            x, y, w, h = sorted_cnts[0]
-
-            cnt_rect1 = x, y, w // 2, h
-            cnt_rect2 = x+(w // 2), y, w // 2, h
-
-            cnts_lst = [cnt_rect1, cnt_rect2]
-            cnts_rects_norm = [*cnts_lst, *sorted_cnts[1::]]
-
-        if len(symb_cnts) >= 5:
-            cnts_rects_norm = symb_cnts
-
-        return CVMethods.sort_cnts(cnts_rects_norm, param=0, reverse=False)
-
-
     def show_cnts_rects(self, image_name, image, cnts_rects, cnts_color, brd_w):
         for (x, y, w, h) in cnts_rects:
             cv2.rectangle(image, (x, y), (x + w, y + h), cnts_color, brd_w)
@@ -202,19 +125,24 @@ class CVMethods:
         max_size = max(w, h)
 
         symbol_square = 0 * np.ones([max_size, max_size], np.uint8)
-        if w > h:
-            y_pos = max_size//2 - h//2
-            symbol_square[y_pos:y_pos + h, 0:w] = symbol_crop
-        elif w < h:
-            x_pos = max_size//2 - w//2
-            symbol_square[0:h, x_pos:x_pos + w] = symbol_crop
-        else:
-            symbol_square = symbol_crop
-        # plt.imshow(letter_square, cmap=plt.cm.binary)
-        # plt.show()
-        resized = cv2.resize(symbol_square, out_size, cv2.INTER_AREA)
 
-        return resized
+        try:
+            if w > h:
+                y_pos = max_size//2 - h//2
+                symbol_square[y_pos:y_pos + h, 0:w] = symbol_crop
+            elif w < h:
+                x_pos = max_size//2 - w//2
+                symbol_square[0:h, x_pos:x_pos + w] = symbol_crop
+            else:
+                symbol_square = symbol_crop
+            # plt.imshow(letter_square, cmap=plt.cm.binary)
+            # plt.show()
+            resized = cv2.resize(symbol_square, out_size, cv2.INTER_AREA)
+            return resized
+            
+        except ValueError:
+            print('Error in symbol image. No predicted symbol: ==> _')
+            return None
 
 
     def student_num_rect(self, w_crop=WIDTH_CROP, h_crop=HEIGHT_CROP):
@@ -258,8 +186,7 @@ class CVMethods:
         return total_mask
 
 
-    @staticmethod
-    def erode_thresh_img(mask, er_ker=EROSION_KERNEL):
+    def erode_thresh_img(self, mask, er_ker=EROSION_KERNEL):
         kernel = np.ones(er_ker, np.uint8)
 
         erosion = cv2.erode(mask, kernel, iterations=1) #const arg
@@ -271,58 +198,11 @@ class CVMethods:
 
 
 
-# Finds all scans in folder with file format .jpg
-# Находит все сканы из папки с форматом .jpg
-def scans_from_folder(folder_path):
-    scans = []
-    for filename in os.listdir(folder_path):
-
-        if os.path.isdir(f'{folder_path}/{filename}'):
-            for scan in os.listdir(f'{folder_path}/{filename}'):
-
-                if scan.endswith('.jpg'):
-                    scans.append(f'{folder_path}/{filename}/{scan}')
-
-        elif filename.endswith('.jpg'):
-            scans.append(f'{folder_path}/{filename}'.replace('\\', '/'))
-    
-    return scans
-
-
-# Saving source image with symbols info
-# Сохранения изображения с информацией о распознанных символах
-def save_img_data(img, img_path, dir_name, symbs_data, scans_dir='scans'):
-    
-    if not os.path.exists(scans_dir):
-        os.mkdir(scans_dir)
-    os.chdir(scans_dir)
-
-    if not os.path.exists(dir_name):
-        os.mkdir(dir_name)
-    os.chdir(dir_name)
-
-    img_name = img_path.split('/')[-1]
-    cv2.imwrite(img_name, img)
-
-    data_dir_name = 'symbols {}'.format(img_name.split('.')[-2])
-    if not os.path.exists(data_dir_name):
-        os.mkdir(data_dir_name)
-    os.chdir(data_dir_name)
-
-    if symbs_data:
-        for i in range(len(symbs_data)):
-            cv2.imwrite(f'({i}) {dir_name[i]}.jpg', symbs_data[i])
-    
-    os.chdir('../../..')
-
-
-
 class SymbolsRecognizer:
     def __init__(self, scan_path, mask_range, gray_range=(0, 220)):
         self.scan_path = scan_path
         self.mask_range = mask_range
         self.gray_range = gray_range
-
 
     @property
     def scan_path(self):
@@ -381,32 +261,79 @@ class SymbolsRecognizer:
         cnts_rects_norm = CVPreproccessor.norm_found_cnts(cnts_rects)
         print('Normalized rectangle contours\n', cnts_rects_norm)
 
-        # Predicting first symbol, which is always a letter
-        # Распознавание первого символа, который всегда является буквой
         symbs_data = []
-        letter_img = CVPreproccessor.resize_img(erosion, cnts_rects_norm[0])
-        symbs_data.append(letter_img)
-        prep_img_arr = NNModel.img_preprocessing(letter_img)
-        
+        result = ''
         LettersModel = NNModel('letters', 'models/letters_model.h5')
-        letter, acc = LettersModel.recognize(prep_img_arr)
-        print(f'Predicted letter: ==> {letter}, Accuracy:', acc)
-        result = letter
-
         DigitsModel = NNModel('digits', 'models/digits_model.h5')
-        for cnt_rect_i in range(1, len(cnts_rects_norm)):
-            digit_img = CVPreproccessor.resize_img(erosion, cnts_rects_norm[cnt_rect_i])
-            symbs_data.append(digit_img)
-            prep_img_arr = NNModel.img_preprocessing(digit_img)
 
-            digit, acc = DigitsModel.recognize(prep_img_arr)
-            print(f'Predicted digit: ==> {digit}, Accuracy:', acc)
-            result += str(digit)
+        # Symbols recognition process (letters & digits)
+        # Распознавание символов (букв и цифр)
+        for cnt_rect_i in range(len(cnts_rects_norm)):
+            symbol_img = CVPreproccessor.resize_img(erosion, cnts_rects_norm[cnt_rect_i])
+            if symbol_img is None:
+                result += '_'
+                continue
+
+            symbs_data.append(symbol_img)
+            prep_img_arr = NNModel.img_preprocessing(symbol_img)
+
+            Model = LettersModel
+            if cnt_rect_i > 0:
+                Model = DigitsModel
+
+            symbol, accuracy = Model.recognize(prep_img_arr)
+            print(f'Predicted symbol: ==> {symbol}, Accuracy:', accuracy)
+            result += str(symbol)
 
         save_img_data(CVPreproccessor.image, self.scan_path, result, symbs_data, scans_dir=scans_dir)
 
         return result    
 
+
+
+# Finds all scans in folder with file format .jpg
+# Находит все сканы из папки с форматом .jpg
+def scans_from_folder(folder_path):
+    scans = []
+    for filename in os.listdir(folder_path):
+
+        if os.path.isdir(f'{folder_path}/{filename}'):
+            for scan in os.listdir(f'{folder_path}/{filename}'):
+
+                if scan.endswith('.jpg'):
+                    scans.append(f'{folder_path}/{filename}/{scan}')
+
+        elif filename.endswith('.jpg'):
+            scans.append(f'{folder_path}/{filename}'.replace('\\', '/'))
+    
+    return scans
+
+
+# Saving source image with symbols info
+# Сохранения изображения с информацией о распознанных символах
+def save_img_data(img, img_path, dir_name, symbs_data, scans_dir='scans'):
+    
+    if not os.path.exists(scans_dir):
+        os.mkdir(scans_dir)
+    os.chdir(scans_dir)
+
+    if not os.path.exists(dir_name):
+        os.mkdir(dir_name)
+    os.chdir(dir_name)
+
+    img_name = img_path.split('/')[-1]
+    cv2.imwrite(img_name, img)
+
+    data_dir_name = 'symbols {}'.format(img_name.split('.')[-2])
+    if not os.path.exists(data_dir_name):
+        os.mkdir(data_dir_name)
+    os.chdir(data_dir_name)
+
+    if symbs_data:
+        for i in range(len(symbs_data)):
+            cv2.imwrite(f'({i}) {dir_name[i]}.jpg', symbs_data[i])
+    
+    os.chdir('../../..')
 
 
 # Recongnizing scans from directory with folders and images
@@ -465,7 +392,7 @@ def config_norm(config_file):
                 dic[folder] = values
 
     except Exception:
-        print('Error might be in the config... Check it up!')
+        print('Error in config.')
     
     return dic
 
@@ -485,6 +412,7 @@ def recognition_with_config(config_file):
 
         else:
             recognize_folder_scans(folder_path, None)
+
 
 # Normalize results (move all symbols files in 1 folder)
 # Нормализует результат, а именно убирает все временные файлы с символами в одну папку
@@ -506,17 +434,24 @@ def norm_edited_results(folder):
                     shutil.move(f'{path}/{info}', rec_symbs_path)
 
 
+
 # Recongnition with config file example
 # Пример распознавания с конфиг файлом, но можно и без него, указав limits самостоятельно
-# file_path = 'scans_26_08_13_30/200/200001.jpg'
-# folder_path = '/'.join(file_path.split('/')[:2])
-# image = cv2.imread(file_path)
-# rect = student_num_rect(image)
-# limits = run_mask_bar(rect)
+def main():
+    file_path = 'scans_26_08_13_30/200/200001.jpg'
+    folder_path = '/'.join(file_path.split('/')[:2])
+    # image = cv2.imread(file_path)
+    # rect = student_num_rect(image)
+    # limits = run_mask_bar(rect)
 
-# with open('config_f.txt', 'w') as test_file:
-#     values = ', '.join([str(i) for i in limits])
-#     test_file.write(f'{folder_path}: {values}')
+    # with open('config_f.txt', 'w') as test_file:
+    #     values = ', '.join([str(i) for i in limits])
+    #     test_file.write(f'{folder_path}: {values}')
 
-# recognition_with_config('config_f.txt')
-# norm_edited_results(folder_path.split('/')[-1])
+    recognition_with_config('config_f.txt')
+    norm_edited_results(folder_path.split('/')[-1])
+
+
+
+if __name__ == "__main__":
+    main()
