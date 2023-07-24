@@ -6,12 +6,12 @@ import cv2
 
 
 class NNModel:
-    __models_dic = {'digits': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], 
+    _models_dic = {'digits': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], 
                    'letters': ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z']}
 
     def __init__(self, model_type, model_file_path):
         self.model_type = model_type
-        self._symbols = self.__models_dic[model_type]
+        self._symbols = self._models_dic[model_type]
         self.model_file_path = model_file_path
 
     @property
@@ -20,7 +20,7 @@ class NNModel:
     
     @model_type.setter
     def model_type(self, model_type):
-        if not(model_type in self.__models_dic):
+        if not(model_type in self._models_dic):
             raise ValueError('Model type can be only "digits" or "letters".')
         self._model_type = model_type
 
@@ -39,6 +39,8 @@ class NNModel:
         self._model_file_path = model_file_path
     
 
+    # Preproccesses image to a numpy array, wich neural network works with
+    # Преобразует изображение в массив numpy, с которым работает нейронная сеть
     @staticmethod
     def img_preprocessing(img):
         img_array = np.expand_dims(img, axis=0)
@@ -46,7 +48,8 @@ class NNModel:
 
         return img_array
 
-
+    # Model from a file recognizes (makes a prediction) symbol on an image
+    # Модель из файла распознает символ на картинке
     def recognize(self, img_array):
         model = load_model(self.model_file_path)
         predicts_arr = model(img_array)

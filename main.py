@@ -6,6 +6,7 @@ from mask_bar import run_mask_bar
 from model import NNModel
 
 
+# constants
 # константы
 BLACK = (0, 40, 0)
 BORDER_WIDTH = 3
@@ -26,13 +27,15 @@ EROSION_KERNEL = (5, 5)
 # GREEN_LIMITS = [([70, 170, 0], [90, 255, 255])]
 # PURPLE_LIMITS = [([116, 115, 0], [130, 255, 255])]
 
-
-
+# Basic class for cv2 preproccessing images for neural network recognition
+# Класс с методами cv2 предобработки изображений для распознавания далее
 class CVMethods:
     def __init__(self, image_path):
         self.image_path = image_path
         self.image = cv2.imread(image_path)
 
+    # getters & setters
+    # геттеры и сеттеры
     @property
     def image(self):
         return self._image
@@ -53,13 +56,15 @@ class CVMethods:
             raise ValueError('Image path type can only be str.')
         self._image_path = image_path
 
-
+    # Sorts found rectangle contours by width or other
+    # Сортирует найденные прямоугольные контура по ширине или другому param
     @staticmethod
     def sort_cnts(cnts_rects, param, reverse):
         sorted_cnts = sorted(cnts_rects, key=lambda rect: rect[param], reverse=reverse)
         return sorted_cnts
 
-
+    # Norms found contours to get rid of together written symbols
+    # Нормирует найденные контура (разделяет на части, чтобы избавиться от слитно написанных букв)
     @staticmethod
     def norm_found_cnts(symb_cnts):
         cnts_rects_norm = []
@@ -81,7 +86,8 @@ class CVMethods:
 
         return CVMethods.sort_cnts(cnts_rects_norm, param=0, reverse=False)
 
-
+    # Returns rectangle contour area on an image
+    # Находит площадь прямоугольного контура на изображении
     def area_part_on_image(self, image, contour):
         image_area = image.shape[0] * image.shape[1]
         cnt_area = cv2.contourArea(contour)
@@ -89,7 +95,8 @@ class CVMethods:
         area_part = (cnt_area / image_area) * 100
         return area_part
 
-
+    # Denotes found contours on an image and returns a list with contours coords
+    # Размечат найденные контура на изображении и возвращает список найденных координат контуров
     def cnts_mark_out(self, image, contours, hierarchy, cnts_color, brd_w, min_area=MIN_ALLOWED_AREA):
         cnt_rects = []
 
@@ -102,20 +109,23 @@ class CVMethods:
         # cv2.waitKey(0)
         return cnt_rects
     
-
+    # Shows an image with denoted contours
+    # Показывает картинку с выделенными контурами
     def show_cnts_rects(self, image_name, image, cnts_rects, cnts_color, brd_w):
         for (x, y, w, h) in cnts_rects:
             cv2.rectangle(image, (x, y), (x + w, y + h), cnts_color, brd_w)
         cv2.imshow(image_name, image)
         cv2.waitKey(0)
 
-
+    # Shows an image part
+    # Показвает прямоугольный кусок изображения 
     def show_img_part(self, image, x, y, w, h):
         img_part = image[y: y+h, x: x+w]
         cv2.imshow('img_part', img_part)
         cv2.waitKey(0)
 
-
+    # Resizes an image into 28x28 resolution to work with NN and justifies symbol if RES_SHIFT
+    # Изменяет разрешение изображения на 28x28, чтобы работать с нейронной сетью и выравнивает букву в квадрате если указать RES_SHIFT
     def resize_img(self, image, cnt_rect, out_size=RES_SIZE, symbol_shift=RES_SHIFT):
         x, y, w, h = cnt_rect
         x, y = x - symbol_shift, y - symbol_shift
@@ -144,7 +154,8 @@ class CVMethods:
             print('Error in symbol image. No predicted symbol: ==> _')
             return None
 
-
+    # Crops only students number from an image
+    # Оставляет только верхнюю правую часть с номером поступающего
     def student_num_rect(self, w_crop=WIDTH_CROP, h_crop=HEIGHT_CROP):
         scan = self.image
         width = scan.shape[0]
@@ -156,12 +167,14 @@ class CVMethods:
 
         return student_num_img
 
-
+    # Removes all noise from image with blur
+    # Избавляет от шума на изображении (плохо пропечатанные клетки) с помощью блюра
     def filter_img(self, image, f_ker=FILTER_KERNEL):
         filtered_img = cv2.medianBlur(image, f_ker) #constant (arg)
         return filtered_img
 
-
+    # Finds all pixels in gray range
+    # Находит пиксели в заданных "серых" пределах (по дефолту для оставления только букв)
     def img_gray_mask(self, image, gray_range=(0, 220)):
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
@@ -171,7 +184,8 @@ class CVMethods:
         # plt.show()
         return gray_mask
 
-
+    # Collects total mask using HSV values
+    # Сбор маски со всеми значениями
     def img_mask(self, image, limits):
         hsv_img = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
         total_mask = 0
@@ -185,7 +199,8 @@ class CVMethods:
 
         return total_mask
 
-
+    # Returns binary eroded image
+    # Возвращает бинарную картинку
     def erode_thresh_img(self, mask, er_ker=EROSION_KERNEL):
         kernel = np.ones(er_ker, np.uint8)
 
@@ -197,7 +212,8 @@ class CVMethods:
         return erosion, thresh
 
 
-
+# Class with main function with preproccessing and symbols recognition on an image using a prelearned model
+# Класс с основной функцией с предподготовкой и распознаванием символов на изображении используя предобученную модель
 class SymbolsRecognizer:
     def __init__(self, scan_path, mask_range, gray_range=(0, 220)):
         self.scan_path = scan_path
@@ -234,7 +250,8 @@ class SymbolsRecognizer:
             raise ValueError('Gray range type can only be tuple[int, int].')
         self._gray_range = gray_range
 
-
+    # Preproccessing and recongnizing symbols on an image (main function)
+    # Распознавание номера поступающего и сохранение изображений в файл (основная функция)
     def recognize_scan(self):
         scans_dir = self.scan_path.split('/')[-2]
 
@@ -435,7 +452,7 @@ def norm_edited_results(folder):
 
 
 
-# Recongnition with config file example
+# Recongnition with config file: example
 # Пример распознавания с конфиг файлом, но можно и без него, указав limits самостоятельно
 def main():
     file_path = 'scans_26_08_13_30/200/200001.jpg'
